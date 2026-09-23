@@ -1,41 +1,34 @@
-# Cuidarte+ | Backend (API REST)
+# Sistema de Gestión Clínica Cuidarte+ | API REST Backend
 
-Este repositorio contiene la API REST para Cuidarte+, una plataforma de gestión clínica integral. El sistema está construido con Node.js y Express, utilizando una base de datos PostgreSQL alojada en NeonTech. Su arquitectura gestiona la autenticación de usuarios, el control de roles, el almacenamiento seguro de documentos clínicos y la generación dinámica de informes médicos.
+Este repositorio contiene el núcleo lógico e infraestructura de datos (Backend) para el sistema de gestión clínica Cuidarte+. Desarrollado bajo la pila tecnológica PERN (PostgreSQL, Express, React, Node.js), este servicio expone una API RESTful escalable, encargada de la persistencia de datos, la lógica de negocio, la interoperabilidad documental y el cumplimiento estricto de los estándares de seguridad requeridos por el centro de salud.
 
-## Tecnologías Utilizadas
+## 1. Arquitectura y Modelado Lógico
 
-* **Entorno:** Node.js con TypeScript
-* **Framework:** Express.js
-* **Base de Datos:** PostgreSQL (NeonTech) / `pg`
-* **Autenticación:** JSON Web Tokens (JWT) y `bcrypt`
-* **Manejo de Archivos:** `multer` (Disk Storage para adjuntos clínicos)
-* **Generación de Documentos:** `pdfkit` (Informes institucionales dinámicos)
+El sistema emplea un patrón de arquitectura orientada a servicios, separando claramente las capas de enrutamiento, controladores (lógica) y acceso a datos. 
 
-## Funcionalidades Principales
+Para resolver la interoperabilidad entre los usuarios del sistema y las fichas clínicas, se diseñó una **sincronización bidireccional transaccional**:
+* Cuando un paciente se registra vía web, el motor de base de datos genera su credencial de acceso (`perfiles`) e inmediatamente instiga una inserción en la tabla `pacientes` con un RUT provisional matemáticamente válido, asegurando que su ficha clínica esté disponible en recepción.
+* Cuando el personal médico registra a un paciente presencialmente, el sistema invierte el flujo, generando automáticamente las credenciales de acceso del paciente (utilizando su RUT cifrado como contraseña base).
 
-* **Sincronización Bidireccional:** Creación automática de fichas médicas al registrar un usuario y generación de credenciales de acceso al ingresar un paciente de forma presencial.
-* **Control de Acceso Basado en Roles (RBAC):** Middleware de seguridad para restringir rutas según el nivel de privilegios (Administrador, Médico, Paciente).
-* **Gestión de Archivos:** Subida de exámenes clínicos y generación automática de informes en formato PDF institucional en caso de no adjuntar archivos externos.
-* **Auditoría y Trazabilidad:** Registro continuo de acciones críticas en el sistema (cambios de estado, alteraciones de rol, eliminación de registros).
-* **Eliminación Lógica y Física:** Borrado seguro de registros garantizando la integridad referencial y preservando el historial médico cuando corresponda.
+## 2. Trazabilidad de Requisitos del Caso (RF y NFR)
 
-## Configuración de Entorno
+El desarrollo de esta API responde directamente a los requerimientos funcionales y no funcionales del documento base:
 
-Se requiere crear un archivo `.env` en el directorio raíz del proyecto con la siguiente estructura:
+### Requisitos de Seguridad Integrados (NFR-SEG)
+* **NFR-SEG-2 (Cifrado de Credenciales):** Se implementó la librería `bcrypt` con un factor de trabajo (salt rounds) de 10. Ninguna contraseña transita o se almacena en texto plano. La validación se realiza mediante comparación de hashes.
+* **NFR-SEG-9 (Gestión de Sesiones Stateless):** Se descartó el uso de sesiones en memoria. En su lugar, el sistema emite JSON Web Tokens (JWT) firmados con el algoritmo HMAC SHA-256. Esto previene ataques de suplantación y permite escalar la API sin dependencias de estado.
+* **NFR-SEG (Auditoría Continua):** Se diseñó una tabla independiente `auditoria`. Cada mutación crítica en la base de datos (Ej: `DELETE` de un examen, `UPDATE` de un rol administrativo) gatilla una inserción en esta tabla, registrando el actor (correo del usuario extraído del JWT), la acción, el nivel de criticidad y la estampa de tiempo.
 
-```env
-PORT=3000
-DATABASE_URL=postgres://usuario:password@host_neon.tech/nombre_bd?sslmode=require
-JWT_SECRET=clave_secreta_jwt
-Despliegue y Ejecución
-Instalar las dependencias del proyecto:
+### Requisitos Funcionales (RF)
+* **RF-1.1 & RF-2.1 (Autenticación y Registro):** Endpoints aislados en `/api/auth` con validación de existencia previa en base de datos para evitar duplicidad de correos o colisiones de llaves únicas (Unique Constraints).
+* **RF-2.3 (Edición de Fichas):** Rutas `PUT /api/pacientes/:id` protegidas por middleware de verificación de roles.
+* **RF-4.4 (Gestión Documental):** Integración de `multer` configurado con `DiskStorage` para la persistencia física de archivos PDF/DOCX. Además, se implementó `pdfkit` para la instanciación dinámica y al vuelo (Buffer) de informes institucionales en caso de que el médico no adjunte un archivo externo.
 
-Bash
-npm install
-Configurar la base de datos:
-Ejecutar el script SQL de inicialización en el gestor de PostgreSQL (NeonTech) para generar las tablas correspondientes e insertar los datos base.
+## 3. Estructura del Directorio
 
-Iniciar el servidor en entorno de desarrollo:
-
-Bash
-npm run dev
+```text
+src/
+ ├── db/               # Configuración del pool de conexiones a PostgreSQL (NeonTech)
+ ├── middleware/       # Interceptores de red (auth.ts para validación de JWT y extracción de payload)
+ ├── routes/           # Definición de endpoints y controladores (auth, usuarios, pacientes, examenes)
+ └── index.ts          # Punto de entrada de la aplicación, configuración de CORS y middlewares globales
