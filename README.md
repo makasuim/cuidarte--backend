@@ -27,3 +27,15 @@ Se requiere crear un archivo `.env` en el directorio raíz del proyecto con la s
 PORT=3000
 DATABASE_URL=postgres://usuario:password@host_neon.tech/nombre_bd?sslmode=require
 JWT_SECRET=clave_secreta_jwt
+Despliegue y Ejecución
+Instalar las dependencias del proyecto:
+
+Bash
+npm install
+Configurar la base de datos:
+Ejecutar el script SQL de inicialización en el gestor de PostgreSQL (NeonTech) para generar las tablas correspondientes e insertar los datos base.
+
+Iniciar el servidor en entorno de desarrollo:
+
+Bash
+npm run dev
