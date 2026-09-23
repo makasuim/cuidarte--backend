@@ -32,3 +32,18 @@ src/
  ├── middleware/       # Interceptores de red (auth.ts para validación de JWT y extracción de payload)
  ├── routes/           # Definición de endpoints y controladores (auth, usuarios, pacientes, examenes)
  └── index.ts          # Punto de entrada de la aplicación, configuración de CORS y middlewares globales
+4. Despliegue y Configuración
+El sistema requiere la definición de un entorno virtual mediante un archivo .env ubicado en la raíz del proyecto:
+
+Fragmento de código
+PORT=3000
+DATABASE_URL=postgres://[usuario]:[password]@[cluster].neon.tech/[bd]?sslmode=require
+JWT_SECRET=[cadena_criptografica_segura]
+Comandos de inicialización:
+
+Bash
+# 1. Instalación de dependencias (Express, pg, jsonwebtoken, bcrypt, pdfkit, multer)
+npm install
+
+# 2. Inicialización del servidor de desarrollo (con hot-reload vía ts-node-dev o nodemon)
+npm run dev
